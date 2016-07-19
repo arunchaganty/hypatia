@@ -51,6 +51,8 @@ def do_train(args):
         scorer = Scorer(model)
         for xy in tqdm(grouper(args.batch_size, zip(X1_dev, X2_dev, y_dev))):
             X1_batch, X2_batch, y_batch = zip(*xy)
+            X1_batch, X2_batch, y_batch = array(X1_batch), array(X2_batch), array(y_batch)
+
             score = model.test_on_batch([X1_batch, X2_batch], y_batch)
             scorer.update(score, len(y_batch))
         logging.info("val error: %.3f", scorer)
