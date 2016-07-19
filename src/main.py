@@ -13,7 +13,7 @@ import logging
 import numpy as np
 from numpy import array
 from tqdm import tqdm
-from util import vectorize_data, grouper, Scorer, WordEmbeddings, process_snli_data, LABELS, LABEL_MAP, ConfusionMatrix
+from util import vectorize_data, grouper, Scorer, WordEmbeddings, process_snli_data, LABELS, LABEL_MAP, ConfusionMatrix, Example
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -38,14 +38,14 @@ def do_train(args):
     """
     Train a model.
     """
-    X1_train, X2_train, y_train = vectorize_data(list(process_snli_data(args.train_data), args.input_length))
-    X1_dev, X2_dev, y_dev = vectorize_data(list(process_snli_data(args.dev_data), args.input_length))
+    X1_train, X2_train, y_train = vectorize_data(list(process_snli_data(args.train_data)), args.input_length)
+    X1_dev, X2_dev, y_dev = vectorize_data(list(process_snli_data(args.dev_data)), args.input_length)
     logging.info("Building model")
     model = get_model_factory(args.model).build(args.input_length)
 
     model.compile(
         optimizer='rmsprop',
-        loss='mse',
+        loss='categorical_crossentropy',
         metrics=['accuracy'])
     logging.info("Done.")
 
@@ -118,7 +118,22 @@ def do_console(args):
     """
     Interact with an existing model using a console.
     """
-    raise NotImplementedError()
+    model = get_model_factory(args.model).load(args.model_path)
+
+    emb = WordEmbeddings()
+    while True:
+        sentence1 = input("$p> ")
+        if len(sentence1) == 0: continue
+        sentence2 = input("$h> ")
+        if len(sentence2) == 0: continue
+
+        tokens1, tokens2 = sentence1.split(), sentence2.split()
+        ex = Example(sentence1, sentence2, tokens1, tokens2, None)
+        x1, x2, _ = vectorize_data(ex, args.input_length)
+        x1, x2 = array([emb.weights[x1,:]]), array([emb.weights[x2,:]])
+        y_  = model.predict([x1, x2])
+        label_ = np.argmax(y_)
+        print("$o> %s (%s)"%(LABELS[label_], ", ".join("%s=%.2f"%(k,v) for k,v in zip(LABELS, list(y_.flatten())))))
 
 if __name__ == "__main__":
     import argparse
@@ -147,11 +162,11 @@ if __name__ == "__main__":
     command_parser.add_argument('--model_path', type=str, default="output", help="Path of serialized model")
     command_parser.add_argument('--eval_data', type=argparse.FileType('r'), default="data/snli_1.0/", help="Data to evaluate the model on.")
     command_parser.add_argument('--output', type=argparse.FileType('w'), default=sys.stdout, help="Output")
-#    command_parser.add_argument('--output', type=argparse.FileType('r'), default="{rundir}/eval", help="Evaluation output.")
 
     command_parser = subparsers.add_parser('console', help='Run a console to interact with the model.' )
     command_parser.set_defaults(func=do_console)
-#    command_parser.add_argument('--model', type=str, default="{rundir}/model", help="Model to use for evaluation.")
+    command_parser.add_argument('--model_path', type=str, default="output", help="Path of serialized model")
+    #command_parser.add_argument('--output', type=argparse.FileType('w'), default=sys.stdout, help="Output")
 
     ARGS = parser.parse_args()
     init_resources(ARGS)

@@ -15,18 +15,19 @@ from numpy import array
 def _json_object_hook(d): return namedtuple('X', d.keys())(*d.values())
 def json2obj(data): return json.loads(data, object_hook=_json_object_hook)
 
+Example = namedtuple('Example', ["sentence1", "sentence2", "tokens1", "tokens2", "label"])
+
 def process_snli_data(datafile):
     """
     Read the SNLI data and return output as ((sentence1, sentence2), label)
     """
-    example = namedtuple('Example', ["sentence1", "sentence2", "tokens1", "tokens2", "label"])
     for line in datafile:
         obj = json.loads(line)
         tokens1 = obj["sentence1_binary_parse"].replace(r'(', '').replace(r')', '').split()
         tokens2 = obj["sentence2_binary_parse"].replace(r'(', '').replace(r')', '').split()
         label = obj["gold_label"]
         if label == "-": continue # Skip
-        yield example(obj["sentence1"], obj["sentence2"], tokens1, tokens2, LABEL_MAP[label])
+        yield Example(obj["sentence1"], obj["sentence2"], tokens1, tokens2, LABEL_MAP[label])
 
 def pad_zeros(arr, length):
     """
@@ -51,7 +52,8 @@ def __vectorize_data(obj, max_length):
     x1 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence1), max_length)
     x2 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence2), max_length)
     y = [0, 0, 0]
-    y[obj.label] = 1
+    if obj.label is not None:
+        y[obj.label] = 1
 
     return array(x1), array(x2), array(y)
 
