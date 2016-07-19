@@ -4,6 +4,7 @@
 Utility functions
 """
 
+import os
 import json
 import itertools
 import logging
@@ -139,36 +140,49 @@ class WordEmbeddings(object):
     def __len__(self):
         return len(self.instance)
 
-
     @classmethod
-    def from_file(cls, f, preserve_case=False, unknown="unk", mmap_fname=".mmap"):
+    def from_file(cls, f, preserve_case=False, unknown="unk", mmap_fname=".mmap", index_fname='.index'):
         """
         Construct a word vector map from a file
         """
-        # TODO: if mmap file exists, just use it.
-        logging.info("Reading word vectors")
-        mapping = {}
-        dim = None
-        for line in f:
-            parts = line.split()
-            tok = parts[0]
-            vec = array([float(x) for x in parts[1:]])
-            if dim is None:
-                dim = len(vec)
-            assert dim == len(vec), "Incorrectly sized vector"
-            mapping[tok] = vec
-        assert unknown in mapping, "Unknown token not defined in word vectors"
+        if os.path.exists(index_fname) and os.path.exists(mmap_fname):
+            with open(index_fname) as f:
+                obj = json.load(f)
+            logging.info("Reading word vectors from disk")
+            weights = np.memmap(mmap_fname, mode='r', shape=(len(obj["indices"]), obj["dim"]))
 
-        # TODO: save indices.
-        # Create an index map and compress dictionary into a matrix.
-        indices = {}
-        weights = np.memmap(mmap_fname, mode='w+', shape=(len(mapping), dim))
-        for i, (key, vec) in enumerate(mapping.items()):
-            indices[key] = i
-            weights[i,:] = vec
-        logging.info("Done. Loaded {} vectors.", len(weights))
+            cls.instance = WordEmbeddings.__WordEmbeddings(obj["indices"], weights, obj["dim"], obj["preserve_case"], obj["unknown"])
+        else:
+            logging.info("Reading word vectors")
+            mapping = {}
+            dim = None
+            for line in f:
+                parts = line.split()
+                tok = parts[0]
+                vec = array([float(x) for x in parts[1:]])
+                if dim is None:
+                    dim = len(vec)
+                assert dim == len(vec), "Incorrectly sized vector"
+                mapping[tok] = vec
+            assert unknown in mapping, "Unknown token not defined in word vectors"
 
-        cls.instance = WordEmbeddings.__WordEmbeddings(indices, weights, dim, preserve_case, unknown)
+            # Create an index map and compress dictionary into a matrix.
+            indices = {}
+            weights = np.memmap(mmap_fname, mode='w+', shape=(len(mapping), dim))
+            for i, (key, vec) in enumerate(mapping.items()):
+                indices[key] = i
+                weights[i,:] = vec
+            logging.info("Done. Loaded %d vectors.", len(weights))
+
+            with open(index_fname, 'w') as f:
+                json.dump({
+                    "indices": indices,
+                    "dim":dim,
+                    "preserve_case":preserve_case,
+                    "unknown":unknown,
+                    }, f)
+
+            cls.instance = WordEmbeddings.__WordEmbeddings(indices, weights, dim, preserve_case, unknown)
 
     @classmethod
     def from_filename(cls, fname, preserve_case=False, unknown="unk"):

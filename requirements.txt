@@ -2,3 +2,4 @@ keras
 https://storage.googleapis.com/tensorflow/mac/tensorflow-0.9.0-py3-none-any.whl
 ipdb
 tqdm
+h5py
