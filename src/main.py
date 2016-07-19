@@ -71,7 +71,7 @@ def do_console(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Train and test a natural langauge inference model.')
-    parser.add_argument('--wvecs', type=argparse.FileType('r'), default="deps/glove.6B/test.txt", help="Path to word vectors.")
+    parser.add_argument('--wvecs', type=argparse.FileType('r'), default="deps/glove.6B/glove.6B.50d.txt", help="Path to word vectors.")
 #    parser.add_argument('--log', type=argparse.FileType('w'), default="{rundir}/log", help="Where to log output.")
     parser.add_argument('--input_length', type=int, default=150, help="Maximum number of tokens.")
 
