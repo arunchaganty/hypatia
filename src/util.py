@@ -8,12 +8,10 @@ import os
 import json
 import itertools
 import logging
+import ipdb
 from collections import namedtuple, defaultdict, Counter
 import numpy as np
 from numpy import array
-
-def _json_object_hook(d): return namedtuple('X', d.keys())(*d.values())
-def json2obj(data): return json.loads(data, object_hook=_json_object_hook)
 
 Example = namedtuple('Example', ["sentence1", "sentence2", "tokens1", "tokens2", "label"])
 
@@ -34,7 +32,6 @@ def pad_zeros(arr, length):
     Pad zeros to make all input fixed length
     """
     return arr[:length] + [0] * max(0, length - len(arr))
-
 
 LABELS = [
     "neutral",
@@ -57,7 +54,6 @@ def __vectorize_data(obj, max_length):
 
     return array(x1), array(x2), array(y)
 
-
 def vectorize_data(objs, max_length):
     """
     Returns a vectorized representation of the input data.
@@ -74,7 +70,6 @@ def vectorize_data(objs, max_length):
         return array(X1), array(X2), array(Y)
     else:
         return __vectorize_data(objs, max_length)
-
 
 class Scorer(object):
     """
@@ -234,6 +229,7 @@ class WordEmbeddings(object):
         return array([[cls.embed_sentence(toks, max_length)] for toks in sentences])
 
 def to_table(data, row_labels, column_labels):
+    """Pretty print tables"""
     # Convert data to strings
     data = [["%.2f"%v for v in row] for row in data]
     cell_width = max(
@@ -241,6 +237,7 @@ def to_table(data, row_labels, column_labels):
         max(map(len, column_labels)),
         max(max(map(len, row)) for row in data))
     def c(s):
+        """adjust cell output"""
         return s + " " * (cell_width - len(s))
     ret = ""
     ret += "\t".join(map(c, column_labels)) + "\n"
@@ -258,28 +255,33 @@ class ConfusionMatrix(object):
         self.counts = defaultdict(Counter)
 
     def update(self, gold, guess):
+        """Update counts"""
         self.counts[gold][guess] += 1
 
     def print_table(self):
+        """Print tables"""
         # Header
         data = [[self.counts[l][l_] for l_,_ in enumerate(self.labels)] for l,_ in enumerate(self.labels)]
         print(to_table(data, self.labels, ["go\\gu"] + self.labels))
 
     def summary(self):
-        tp, fp, fn, tn, acc, f1, prec, rec = [Counter()] * 8
+        """Summarize counts"""
+        keys = range(len(self.labels))
+        data = []
+        for l in keys:
+            tp = self.counts[l][l]
+            fp = sum(self.counts[l_][l] for l_ in keys if l_ != l)
+            tn = sum(self.counts[l_][l__] for l_ in keys if l_ != l for l__ in keys if l__ != l)
+            fn = sum(self.counts[l][l_] for l_ in keys if l_ != l)
 
-        for l, _ in enumerate(self.labels):
-            tp[l] += self.counts[l][l]
-            fp[l] += sum(self.counts[l][l_] for l_ in self.labels if l_ != l)
-            tn[l] += sum(self.counts[l_][l__] for l_ in self.labels if l_ != l for l__ in self.labels if l__ != l)
-            fn[l] += sum(self.counts[l_][l] for l_ in self.labels if l_ != l)
+            acc = (tp + tn)/(tp + tn + fp + fn) if tp > 0  else 0
+            prec = (tp)/(tp + fp) if tp > 0  else 0
+            rec = (tp)/(tp + fn) if tp > 0  else 0
+            f1 = 2 * prec * rec / (prec + rec) if tp > 0  else 0
+            #ipdb.set_trace()
 
-            acc[l] = (tp[l] + tn[l])/(tp[l] + tn[l] + fp[l] + fn[l]) if tp[l] > 0  else 0
-            prec[l] = (tp[l])/(tp[l] + fp[l]) if tp[l] > 0  else 0
-            rec[l] = (tp[l])/(tp[l] + fn[l]) if tp[l] > 0  else 0
-            f1[l] = 2 * prec[l] * rec[l] / (prec[l] + rec[l]) if tp[l] > 0  else 0
 
-        data = [[acc[l], prec[l], rec[l], f1[l]] for l, _ in enumerate(self.labels)]
+            data.append([acc, prec, rec, f1])
+
         print(to_table(data, self.labels, ["label", "acc", "prec", "rec", "f1"]))
-
 
