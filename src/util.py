@@ -8,7 +8,7 @@ import os
 import json
 import itertools
 import logging
-from collections import namedtuple
+from collections import namedtuple, defaultdict, Counter
 import numpy as np
 from numpy import array
 
@@ -19,45 +19,60 @@ def process_snli_data(datafile):
     """
     Read the SNLI data and return output as ((sentence1, sentence2), label)
     """
-    example = namedtuple('Example', ["sentence1", "sentence2", "label"])
+    example = namedtuple('Example', ["sentence1", "sentence2", "tokens1", "tokens2", "label"])
     for line in datafile:
         obj = json.loads(line)
         tokens1 = obj["sentence1_binary_parse"].replace(r'(', '').replace(r')', '').split()
         tokens2 = obj["sentence2_binary_parse"].replace(r'(', '').replace(r')', '').split()
         label = obj["gold_label"]
         if label == "-": continue # Skip
-        yield example(tokens1, tokens2, label)
+        yield example(obj["sentence1"], obj["sentence2"], tokens1, tokens2, LABEL_MAP[label])
 
 def pad_zeros(arr, length):
+    """
+    Pad zeros to make all input fixed length
+    """
     return arr[:length] + [0] * max(0, length - len(arr))
 
-def load_data(datafile, max_length=40):
+
+LABELS = [
+    "neutral",
+    "contradiction",
+    "entailment",
+    ]
+LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
+
+def __vectorize_data(obj, max_length):
     """
     Returns a vectorized representation of the input data.
     Each sentence is converted into a sequence of token indices.
     Each output vector is translated as a one hot vector
     """
+    x1 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence1), max_length)
+    x2 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence2), max_length)
+    y = [0, 0, 0]
+    y[obj.label] = 1
 
-    label_map = {
-        "neutral" : 0,
-        "contradiction": 1,
-        "entailment": 2,
-        }
+    return array(x1), array(x2), array(y)
 
-    X1, X2, Y = [], [], []
 
-    logging.info("Reading data")
-    for obj in process_snli_data(datafile):
-        x1 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence1), max_length)
-        x2 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence2), max_length)
-        y = [0, 0, 0]
-        y[label_map[obj.label]] = 1
-        X1.append(x1)
-        X2.append(x2)
-        Y.append(y)
-    logging.info("Done.")
+def vectorize_data(objs, max_length):
+    """
+    Returns a vectorized representation of the input data.
+    Each sentence is converted into a sequence of token indices.
+    Each output vector is translated as a one hot vector
+    """
+    if isinstance(objs, list):
+        X1, X2, Y = [], [], []
+        for obj in objs:
+            x1, x2, y = __vectorize_data(obj, max_length)
+            X1.append(x1)
+            X2.append(x2)
+            Y.append(y)
+        return array(X1), array(X2), array(Y)
+    else:
+        return __vectorize_data(objs, max_length)
 
-    return array(X1), array(X2), array(Y)
 
 class Scorer(object):
     """
@@ -215,5 +230,54 @@ class WordEmbeddings(object):
         Return the list of tokens embedded as a matrix.
         """
         return array([[cls.embed_sentence(toks, max_length)] for toks in sentences])
+
+def to_table(data, row_labels, column_labels):
+    # Convert data to strings
+    data = [["%.2f"%v for v in row] for row in data]
+    cell_width = max(
+        max(map(len, row_labels)),
+        max(map(len, column_labels)),
+        max(max(map(len, row)) for row in data))
+    def c(s):
+        return s + " " * (cell_width - len(s))
+    ret = ""
+    ret += "\t".join(map(c, column_labels)) + "\n"
+    for l, row in zip(row_labels, data):
+        ret += "\t".join(map(c, [l] + row)) + "\n"
+    return ret
+
+class ConfusionMatrix(object):
+    """
+    Keeping track of the confusion matrix.
+    """
+
+    def __init__(self, labels):
+        self.labels = labels
+        self.counts = defaultdict(Counter)
+
+    def update(self, gold, guess):
+        self.counts[gold][guess] += 1
+
+    def print_table(self):
+        # Header
+        data = [[self.counts[l][l_] for l_,_ in enumerate(self.labels)] for l,_ in enumerate(self.labels)]
+        print(to_table(data, self.labels, ["go\\gu"] + self.labels))
+
+    def summary(self):
+        tp, fp, fn, tn, acc, f1, prec, rec = [Counter()] * 8
+
+        for l, _ in enumerate(self.labels):
+            tp[l] += self.counts[l][l]
+            fp[l] += sum(self.counts[l][l_] for l_ in self.labels if l_ != l)
+            tn[l] += sum(self.counts[l_][l__] for l_ in self.labels if l_ != l for l__ in self.labels if l__ != l)
+            fn[l] += sum(self.counts[l_][l] for l_ in self.labels if l_ != l)
+
+            acc[l] = (tp[l] + tn[l])/(tp[l] + tn[l] + fp[l] + fn[l]) if tp[l] > 0  else 0
+            prec[l] = (tp[l])/(tp[l] + fp[l]) if tp[l] > 0  else 0
+            rec[l] = (tp[l])/(tp[l] + fn[l]) if tp[l] > 0  else 0
+            f1[l] = 2 * prec[l] * rec[l] / (prec[l] + rec[l]) if tp[l] > 0  else 0
+
+        data = [[acc[l], prec[l], rec[l], f1[l]] for l, _ in enumerate(self.labels)]
+        print(to_table(data, self.labels, ["label", "acc", "prec", "rec", "f1"]))
 
 

@@ -15,9 +15,11 @@ class BasicModel(EntailmentModel):
     trains a single layer model on the sentence encodings.
     """
 
-    def __init__(self, input_length, output_type="sigmoid", **kwargs):
-        emb = Embedding(len(WordEmbeddings()), WordEmbeddings().dim, weights=[WordEmbeddings().weights], trainable=False)
+    def __init__(self, *args, **kwargs):
+        super(BasicModel, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def build(cls, input_length, output_type="sigmoid", **kwargs):
         # The two sentece inputs
         x1, x2 = Input(shape=(input_length, WordEmbeddings().dim,), dtype="float32"), Input(shape=(input_length, WordEmbeddings().dim,), dtype="float32")
 
@@ -28,7 +30,7 @@ class BasicModel(EntailmentModel):
         z = merge([h1,h2], mode="concat")
         z = Flatten()(z)
         z = Dropout(0.5)(z)
-        y = Dense(self.output_shape, activation=output_type)(z)
+        y = Dense(cls.output_shape, activation=output_type)(z)
 
-        super(BasicModel, self).__init__(x1, x2, y, **kwargs)
+        return BasicModel(input=[x1, x2], output=[y])
 
