@@ -46,14 +46,16 @@ def load_data(datafile, max_length=40):
 
     X1, X2, Y = [], [], []
 
+    logging.info("Reading data")
     for obj in process_snli_data(datafile):
-        x1 = pad_zeros(WordEmbeddings.embed_sentence(obj.sentence1), max_length)
-        x2 = pad_zeros(WordEmbeddings.embed_sentence(obj.sentence2), max_length)
+        x1 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence1), max_length)
+        x2 = pad_zeros(WordEmbeddings.project_sentence(obj.sentence2), max_length)
         y = [0, 0, 0]
         y[label_map[obj.label]] = 1
         X1.append(x1)
         X2.append(x2)
         Y.append(y)
+    logging.info("Done.")
 
     return array(X1), array(X2), array(Y)
 
@@ -145,15 +147,15 @@ class WordEmbeddings(object):
         """
         Construct a word vector map from a file
         """
+        logging.info("Reading word vectors")
         if os.path.exists(index_fname) and os.path.exists(mmap_fname):
             with open(index_fname) as f:
                 obj = json.load(f)
-            logging.info("Reading word vectors from disk")
-            weights = np.memmap(mmap_fname, mode='r', shape=(len(obj["indices"]), obj["dim"]))
+            logging.info("Using cached version on disk.")
+            weights = np.memmap(mmap_fname, mode='r', shape=(len(obj["indices"]), obj["dim"]), dtype=np.float32)
 
             cls.instance = WordEmbeddings.__WordEmbeddings(obj["indices"], weights, obj["dim"], obj["preserve_case"], obj["unknown"])
         else:
-            logging.info("Reading word vectors")
             mapping = {}
             dim = None
             for line in f:
@@ -168,11 +170,10 @@ class WordEmbeddings(object):
 
             # Create an index map and compress dictionary into a matrix.
             indices = {}
-            weights = np.memmap(mmap_fname, mode='w+', shape=(len(mapping), dim))
+            weights = np.memmap(mmap_fname, mode='w+', shape=(len(mapping), dim), dtype=np.float32)
             for i, (key, vec) in enumerate(mapping.items()):
                 indices[key] = i
                 weights[i,:] = vec
-            logging.info("Done. Loaded %d vectors.", len(weights))
 
             with open(index_fname, 'w') as f:
                 json.dump({
@@ -183,6 +184,7 @@ class WordEmbeddings(object):
                     }, f)
 
             cls.instance = WordEmbeddings.__WordEmbeddings(indices, weights, dim, preserve_case, unknown)
+            logging.info("Done. Loaded %d vectors.", len(cls.instance.weights))
 
     @classmethod
     def from_filename(cls, fname, preserve_case=False, unknown="unk"):
@@ -194,11 +196,18 @@ class WordEmbeddings(object):
             WordEmbeddings.from_file(f, preserve_case, unknown, mmap_fname)
 
     @classmethod
-    def embed_sentence(cls, toks, max_length=40):
+    def project_sentence(cls, toks, max_length=40):
+        """
+        Return a list of indices into the word vectors
+        """
+        return [cls.instance[t] for t in toks[:max_length]]
+
+    @classmethod
+    def embed_sentence(cls, indices, max_length=40):
         """
         Return the list of tokens embedded as a matrix.
         """
-        return [cls.instance[t] for t in toks[:max_length]]
+        return cls.instance.weights[indices[:max_length],:]
 
     @classmethod
     def embed_sentences(cls, sentences, max_length=40):
