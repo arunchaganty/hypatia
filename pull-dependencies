@@ -3,7 +3,7 @@ source pull-dependencies.lib
 
 ensure_dir deps
 # GloVe vectors
-downloadExt deps 'http://nlp.stanford.edu/data/glove.6B.zip'
+#downloadExt deps 'http://nlp.stanford.edu/data/glove.6B.zip'
 
 ensure_dir data
 downloadExt data 'http://nlp.stanford.edu/projects/snli/snli_1.0.zip'
