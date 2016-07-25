@@ -4,6 +4,8 @@
 Utility functions
 """
 
+from __future__ import division
+
 import os
 import json
 import itertools
@@ -75,8 +77,8 @@ class Scorer(object):
     """
     This object keeps running track of scores while training.
     """
-    def __init__(self, model):
-        self.metrics = model.metrics_names
+    def __init__(self, metrics):
+        self.metrics = metrics
         self.score = [0. for _ in self.metrics]
         self.n = 0
 
@@ -86,7 +88,7 @@ class Scorer(object):
         """
         self.n += n_items
         for i, val in enumerate(score):
-            self.score[i] += (n_items * score[i] - val)/self.n
+            self.score[i] += n_items * (val - self.score[i])/self.n
 
     def __str__(self):
         return "\t".join(str(name) + " " + str(score) for name, score in zip(self.metrics, self.score))
@@ -102,6 +104,15 @@ class Scorer(object):
         Return values of the matrics as a string.
         """
         return self.score
+
+def test_scorer():
+    scorer = Scorer(["x","y"])
+    items = [(-1,-1), (1,1), (1,1)]
+    avgs =  [(-1,-1), (0.,0.), (1./3.,1./3.)]
+    for item, avg in zip(items, avgs):
+        scorer.update(item, 1)
+        print(scorer.values(), avg)
+        assert np.allclose(scorer.values(), avg)
 
 def grouper(n, iterable):
     """
@@ -268,6 +279,8 @@ class ConfusionMatrix(object):
         """Summarize counts"""
         keys = range(len(self.labels))
         data = []
+        macro = array([0., 0., 0., 0.])
+        micro = array([0., 0., 0., 0.])
         for l in keys:
             tp = self.counts[l][l]
             fp = sum(self.counts[l_][l] for l_ in keys if l_ != l)
@@ -278,10 +291,24 @@ class ConfusionMatrix(object):
             prec = (tp)/(tp + fp) if tp > 0  else 0
             rec = (tp)/(tp + fn) if tp > 0  else 0
             f1 = 2 * prec * rec / (prec + rec) if tp > 0  else 0
-            #ipdb.set_trace()
 
+            # update micro/macro averages
+            micro += array([tp, fp, tn, fn])
+            macro += array([acc, prec, rec, f1])
 
             data.append([acc, prec, rec, f1])
 
-        print(to_table(data, self.labels, ["label", "acc", "prec", "rec", "f1"]))
+        # micro average
+        tp, fp, tn, fn = micro
+        acc = (tp + tn)/(tp + tn + fp + fn) if tp > 0  else 0
+        prec = (tp)/(tp + fp) if tp > 0  else 0
+        rec = (tp)/(tp + fn) if tp > 0  else 0
+        f1 = 2 * prec * rec / (prec + rec) if tp > 0  else 0
+        data.append([acc, prec, rec, f1])
+        # Macro average
+        data.append(macro / len(keys))
+        # Macro and micro average.
+
+
+        print(to_table(data, self.labels + ["micro","macro"], ["label", "acc", "prec", "rec", "f1"]))
 
