@@ -3,10 +3,8 @@
 """
 A basic entailment model
 """
-from . import EntailmentModel, SentenceEntailmentModel
-from keras import backend as K
-from keras.layers import Dense, Dropout, Activation, Reshape, Flatten, Merge, Input, AveragePooling1D, merge, Embedding
-from util import WordEmbeddings
+from . import SentenceEntailmentModel
+from keras.layers import Dense, Dropout, merge
 
 class BasicModel(SentenceEntailmentModel):
     """
@@ -21,6 +19,7 @@ class BasicModel(SentenceEntailmentModel):
         """
         Combine the sentence embeddings x1, x2 to produce an entailment.
         """
+        hidden_dimension = kwargs.get('hidden_dimension', 128)
         output_shape = kwargs.get('output_shape', cls.output_shape)
         output_type = kwargs.get('output_type', 'sigmoid')
 
@@ -28,7 +27,7 @@ class BasicModel(SentenceEntailmentModel):
         z = merge([x1,x2], mode="concat")
         #z = Flatten()(z)
         z = Dropout(0.5)(z)
-        z = Dense(50, activation='relu')(z)
+        z = Dense(hidden_dimension, activation='relu')(z)
         z = Dropout(0.5)(z)
         y = Dense(output_shape, activation=output_type)(z)
 
