@@ -9,7 +9,8 @@ Retrieved from http://arxiv.org/abs/1606.01933
 
 from . import EntailmentModel
 from layers import InnerAttention
-from keras.layers import Dense, Dropout, Flatten, Input, AveragePooling1D, merge, TimeDistributed
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten, Input, AveragePooling1D, merge, TimeDistributed, LSTM
 
 class AlignmentEntailmentModel(EntailmentModel):
     """
@@ -35,7 +36,9 @@ class AlignmentEntailmentModel(EntailmentModel):
         b = Input(input_shape)
 
         # Feedforward encoding of each (word) of a, b
-        P = TimeDistributed(Dense(emb_dim, activation='relu'))
+        #P1, P2 = Dense(emb_dim, activation='relu'), Dense(emb_dim, activation='relu')
+        P = TimeDistributed(Sequential([Dense(emb_dim, activation='relu', input_dim=input_dim), Dense(emb_dim, activation='relu')]))
+        #P = LSTM(emb_dim, return_sequences=True)
         a_, b_ = P(a), P(b)
 
         # NOTE: For "intra-sentence" - first do attention over tokens in a_i and return concatenation of [a_i, a'_i]
@@ -47,8 +50,10 @@ class AlignmentEntailmentModel(EntailmentModel):
         β = Q([b_, a_]) # aligned with b
 
         # 2. Compare aligned phrases
-        G1, G2 = Dropout(p), TimeDistributed(Dense(g_dim, activation='relu'))
+        #G1, G2 = Dropout(p), TimeDistributed(Dense(g_dim, activation='relu'))
         G = lambda x: G2(G1(x))
+        #G = TimeDistributed(Sequential([Dense(g_dim, activation
+        G = TimeDistributed(Sequential([Dense(g_dim, activation='relu', input_dim=2*emb_dim), Dense(g_dim, activation='relu')]))
         # v_{1,i} = G([a_i, β_i])
         v1 = G(merge([a_, β], mode='concat'))
         # v_{2,i} = G([α_j, b_j])
@@ -59,8 +64,9 @@ class AlignmentEntailmentModel(EntailmentModel):
         v1 = Flatten()(AveragePooling1D(input_length)(v1))
         v2 = Flatten()(AveragePooling1D(input_length)(v2))
 
-        H1, H2 = Dropout(p), Dense(h_dim, activation='relu')
-        H = lambda x: H2(H1(x))
+        #H1, H2 = Dropout(p), Dense(h_dim, activation='relu')
+        #H = lambda x: H2(H1(x))
+        H = Sequential([Dense(h_dim, activation='relu', input_dim=2*g_dim), Dense(h_dim, activation='relu'),])
         # Predict using H[v_1, v_2]
         z = H(merge([v1, v2], mode='concat'))
         z = Dropout(p)(z)
