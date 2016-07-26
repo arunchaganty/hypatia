@@ -82,7 +82,7 @@ def do_train(args):
     model = model.build(input_shape = (args.input_length, emb.dim), sentence_model=sentence_model)
 
     model.compile(
-        optimizer='rmsprop',
+        optimizer='adagrad',
         loss='categorical_crossentropy',
         metrics=['accuracy'])
     logging.info("Done.")

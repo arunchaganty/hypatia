@@ -21,7 +21,7 @@ class BasicModel(SentenceEntailmentModel):
         """
         hidden_dimension = kwargs.get('hidden_dimension', 128)
         output_shape = kwargs.get('output_shape', cls.output_shape)
-        output_type = kwargs.get('output_type', 'sigmoid')
+        output_type = kwargs.get('output_type', 'softmax')
 
         # Softmax on top of these.
         z = merge([x1,x2], mode="concat")

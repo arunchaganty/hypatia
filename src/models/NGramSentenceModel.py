@@ -16,7 +16,7 @@ class NGramSentenceModel(SentenceModel):
         input_shape = kwargs['input_shape']
         output_shape = kwargs.get('output_shape', 128)
         filter_size = kwargs.get('filter_size', 200)
-        ngrams_windows = kwargs.get('ngram-windows', [1,2,3])
+        ngrams_windows = kwargs.get('ngram-windows', [2,])
 
         input_length, input_dim = input_shape
         x = Input(shape=input_shape)
@@ -33,7 +33,10 @@ class NGramSentenceModel(SentenceModel):
             window_models[window_length] = y
 
         # Merge these windows
-        z = merge(list(window_models.values()), mode='concat')
+        if len(window_models) > 1:
+            z = merge(list(window_models.values()), mode='concat')
+        else:
+            z = window_models[ngrams_windows[0]]
         z = Dropout(0.5)(z)
         z = Flatten()(z)
         # Finally add another non-linearity for this layer.
