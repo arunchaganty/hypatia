@@ -3,7 +3,7 @@
 A basic sentence model
 """
 from . import SentenceModel
-from keras.layers import AveragePooling1D, Input
+from keras.layers import AveragePooling1D, Input, Flatten
 
 class BasicSentenceModel(SentenceModel):
     """
@@ -16,5 +16,6 @@ class BasicSentenceModel(SentenceModel):
         input_length, _ = input_shape
         x = Input(shape=input_shape)
         z = AveragePooling1D(pool_length=input_length-1)(x)
+        z = Flatten()(z)
         return SentenceModel(input=[x], output=[z])
 
