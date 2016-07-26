@@ -14,6 +14,7 @@ import numpy as np
 from numpy import array
 from tqdm import tqdm
 from util import vectorize_data, grouper, Scorer, WordEmbeddings, process_snli_data, LABELS, LABEL_MAP, ConfusionMatrix, Example
+from models import SentenceEntailmentModel
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -78,8 +79,12 @@ def do_train(args):
     X1_train, X2_train, y_train = vectorize_data(list(process_snli_data(args.train_data)), args.input_length)
     X1_dev, X2_dev, y_dev = vectorize_data(list(process_snli_data(args.dev_data)), args.input_length)
     logging.info("Building model")
-    model, sentence_model = get_model_factory(args.model), get_model_factory(args.sentence_model)
-    model = model.build(input_shape = (args.input_length, emb.dim), sentence_model=sentence_model)
+    model = get_model_factory(args.model)
+    if isinstance(model, SentenceEntailmentModel):
+        sentence_model = get_model_factory(args.sentence_model)
+        model = model.build(input_shape = (args.input_length, emb.dim), sentence_model=sentence_model)
+    else:
+        model = model.build(input_shape = (args.input_length, emb.dim))
 
     model.compile(
         optimizer='adagrad',
@@ -161,7 +166,7 @@ if __name__ == "__main__":
     parser.add_argument('--wvecs', type=argparse.FileType('r'), default="deps/glove.6B/glove.6B.50d.txt", help="Path to word vectors.")
 #    parser.add_argument('--log', type=argparse.FileType('w'), default="{rundir}/log", help="Where to log output.")
     parser.add_argument('--input_length', type=int, default=150, help="Maximum number of tokens.")
-    parser.add_argument('--model', choices=["BasicModel"], default="BasicModel", help="Type of model to use.")
+    parser.add_argument('--model', choices=["BasicModel", "AlignmentEntailmentModel"], default="BasicModel", help="Type of model to use.")
     parser.add_argument('--sentence-model', choices=["BasicSentenceModel", "NGramSentenceModel"], default="NGramSentenceModel", help="Type of sentence model to use.")
 
     subparsers = parser.add_subparsers()
