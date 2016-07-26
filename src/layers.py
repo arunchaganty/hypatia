@@ -15,7 +15,7 @@ class InnerAttention(Layer):
        to.  Let:
         - x ∈ R^{m x d} and y ∈ R^{n x d},
         - attention matrix e = x y^T ∈ R^{m x n}.
-        - returns softmax(e) y ∈ R^{m x d}
+        - returns softmax(e) y ∈ R^{n x d}
     """
 
     def __init__(self, **kwargs):
@@ -31,7 +31,6 @@ class InnerAttention(Layer):
         #assert d1 == d2, "x and y should be of same dimension, but dim(x)=%d, dim(y)=%d"%(d1, d2)
 
         z = K.batch_dot(x, y, axes=2)
-        #z = theano.printing.Print("")(z)
 
         # Softmax
         e = K.exp(z - K.max(z, axis=-1, keepdims=True))
@@ -45,29 +44,33 @@ class InnerAttention(Layer):
 
     def get_output_shape_for(self, input_shapes):
         assert input_shapes and len(input_shapes) == 2
-        return input_shapes[0]
+        return input_shapes[1]
 
 def test_inner_attention():
     import numpy as np
     from numpy import eye, array 
+    from numpy.random import randn
     from keras.layers import Input
     from keras.models import Model
 
-    N, D = 3, 4
+    N1, D = 3, 4
+    N2, D = 2, 4
 
-    x1 = Input(shape=(N,D))
-    x2 = Input(shape=(N,D))
+    x1 = Input(shape=(N1,D))
+    x2 = Input(shape=(N2,D))
     z = InnerAttention()([x1, x2])
     model = Model(input=[x1,x2], output=[z])
 
-    x1 = eye(4)[:3,:]
-    x2 = eye(4)[:3,:]
-    e = x1.dot(x2.T)
-    e = np.exp(e - np.max(e, axis=-1, keepdims=True))
-    s = np.sum(e, axis=-1, keepdims=True)
-    z = e / s
-    z = z.dot(x1)
+    def compute_attention(x1, x2):
+        e = x1.dot(x2.T)
+        e = np.exp(e - np.max(e, axis=-1, keepdims=True))
+        s = np.sum(e, axis=-1, keepdims=True)
+        z = e / s
+        return z.T.dot(x1)
 
-    z_ = model.predict([array([x1]),array([x2])])
-    assert np.allclose(z, z_), "Implementation of soft attention doesn't match defintion"
+    for x1, x2 in [(eye(4)[:N1,:], eye(4)[:N2,:]),
+                   (randn(N1,D), randn(N2,D))]:
+        z = compute_attention(x1, x2)
+        z_ = model.predict([array([x1]),array([x2])])
+        assert np.allclose(z, z_), "Implementation of soft attention doesn't match defintion"
 
