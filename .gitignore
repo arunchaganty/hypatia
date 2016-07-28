@@ -90,3 +90,8 @@ ENV/
 
 # vim swap
 .*.swp
+
+# directories.
+data/
+deps/
+
