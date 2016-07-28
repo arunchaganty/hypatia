@@ -95,3 +95,6 @@ ENV/
 data/
 deps/
 
+# django
+django/hypatia/settings.py
+
