@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="panel panel-default">
+  <div class="panel-body">
+    <ul class="list-group">
+      {% for result in results %}
+      <li class="list-group-item"><a href="{{result.stmt}}">{{result.statement}}</a></li>
+      {% endfor %}
+    </ul>
+
+    <section class="center-flex">
+      <nav>
+        <ul class="pagination">
+          <li>
+            <a href="#" aria-label="Previous">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+          <li><a href="#">1</a></li>
+          <li><a href="#">2</a></li>
+          <li><a href="#">3</a></li>
+          <li><a href="#">4</a></li>
+          <li><a href="#">5</a></li>
+          <li>
+            <a href="#" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </section>
+    </div>
+</div>
+{% endblock %}
