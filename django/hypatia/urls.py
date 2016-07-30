@@ -14,17 +14,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf.urls import include, url
-from django.contrib import admin
+from django.contrib import admin, staticfiles
 from . import settings
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    url(r'^corenlp/', include('corenlp.urls')),
     url(r'', include('search.urls')),
 ]
 
-if settings.DEBUG:
-    from django.contrib import staticfiles
-    urlpatterns += [
-        url(r'^static/(?P<path>.*)$', staticfiles.views.serve),
-    ]
-
+#if settings.DEBUG:
+#    urlpatterns += [
+#        url(r'^static/(?P<path>.*)$', staticfiles.views.serve),
+#    ]
+#
