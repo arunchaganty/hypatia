@@ -7,9 +7,11 @@ Searches google for a query.
 import json
 import requests
 import readability
-from corenlp.models import Document
-from search.models import QueryMap
+from corenlp.models import Document, Sentence
+from .models import QueryMap
 from datetime import date
+from corenlp.util import annotate_document
+from . import settings
 
 class GoogleSearcher(object):
     """
@@ -59,6 +61,13 @@ def get_documents_for_query(query):
             q.save()
             results.append(q)
     return results
+
+def do_annotate(doc):
+    """
+    Annotate document with CoreNLP API.
+    """
+    sentences, mentions = annotate_document(doc)
+    Sentence.objects.bulk_create(sentences)
 
 def test_searcher():
     results = searcher(TEST_QUERY)

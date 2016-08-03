@@ -1,7 +1,11 @@
 keras
 #https://storage.googleapis.com/tensorflow/mac/tensorflow-0.9.0-py3-none-any.whl
-https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.9.0-cp34-cp34m-linux_x86_64.whl
+#https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.9.0-cp34-cp34m-linux_x86_64.whl
 ipdb
 tqdm
 h5py
+# Django
+django>=1.10
+requests
 readability-lxml
+psycopg2

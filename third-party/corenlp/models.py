@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.search import SearchVectorField
 from . import settings
 
 
@@ -36,8 +37,6 @@ class Sentence(models.Model):
         if not settings.USE_TABLENAME_PREFIX:
             db_table = "document"
         managed = settings.MANAGE_TABLES
-
-    id = models.BigIntegerField(primary_key=True)
     # The corpus id is replicated here for the purpose of efficiency.
     corpus_id = models.TextField(help_text="Namespace of the document collection.")
     doc = models.ForeignKey(Document, help_text="Source document")
@@ -52,6 +51,7 @@ class Sentence(models.Model):
     dependencies = models.TextField(null=True, db_column = 'dependencies_extra', help_text="Dependency tree in CONLL format")
     # NOTE: other dependency formats like dependencies_malt are ignored.
     gloss = models.TextField(help_text="Raw text representation of the sentence")
+    searchable = SearchVectorField('words')
 
     def __str__(self):
         return self.gloss

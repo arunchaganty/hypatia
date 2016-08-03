@@ -226,7 +226,7 @@ class AnnotatedSentence(Sentence):
         return self.pb.paragraph
 
     @property
-    def sentenceIndex(self):
+    def sentence_index(self):
         """
         Returns the paragraph index.
         """
@@ -237,7 +237,7 @@ class AnnotatedSentence(Sentence):
         Returns the next sentence
         """
         if self.document is not None:
-            return self.document[self.sentenceIndex+1]
+            return self.document[self.sentence_index+1]
         else:
             raise AttributeError("Document has not been set")
 
@@ -246,7 +246,7 @@ class AnnotatedSentence(Sentence):
         Returns the previous sentence
         """
         if self.document is not None:
-            return self.document[self.sentenceIndex-1]
+            return self.document[self.sentence_index-1]
         else:
             raise AttributeError("Document has not been set")
 
