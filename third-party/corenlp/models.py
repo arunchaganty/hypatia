@@ -13,13 +13,13 @@ class Document(models.Model):
         if not settings.USE_TABLENAME_PREFIX:
             db_table = "document"
         managed = settings.MANAGE_TABLES
-    id = models.CharField(max_length=256, primary_key=True)
-    corpus_id = models.TextField(help_text="Namespace of the document collection.")
-    source = models.TextField(help_text="Tracks the document source.")
+    id = models.TextField(primary_key=True)
+    corpus_id = models.TextField(default='default', help_text="Namespace of the document collection.")
+    source = models.TextField(default='default', help_text="Tracks the document source.")
     date = models.DateField(null=True, help_text="Date of the document")
     title = models.TextField(help_text="Title for the document")
     gloss = models.TextField(help_text="The entire document")
-    metadata = models.TextField(help_text="Miscellaneous metadata in json")
+    metadata = models.TextField(default='', blank=True, help_text="Miscellaneous metadata in json")
 
     def __str__(self):
         return self.gloss
@@ -59,26 +59,6 @@ class Sentence(models.Model):
     def __repr__(self):
         return "[Sentence {}]".format(self.gloss[:50])
 
-class Entity(models.Model):
-    """
-    An entity is the target of entity linking.
-    Usually, if linking works, these entities will be represented in
-    "Wiki_Format".
-    """
-    class Meta:
-        if not settings.USE_TABLENAME_PREFIX:
-            db_table = "entity"
-        managed = settings.MANAGE_TABLES
-
-    id = models.TextField(primary_key=True, help_text="The entity id is simply the canonical textual representation of the entity")
-    ner = models.CharField(max_length=64, help_text="Type of entity, usually an NER tag")
-
-    def __str__(self):
-        return "{}".format(str(self.id).replace("_"," "))
-
-    def __repr__(self):
-        return "[Entity {}]".format(self.id)
-
 class Mention(models.Model):
     """
     Represents occurrences of entity mentions in the document.
@@ -104,10 +84,10 @@ class Mention(models.Model):
 
     # linking information
     ner = models.CharField(max_length=64, help_text="Type of entity, usually an NER tag")
-    best_entity = models.ForeignKey(Entity, related_name="mentions", db_column="best_entity", help_text="The best entity link for this mention")
+    best_entity = models.TextField(help_text="The best entity link for this mention")
     best_entity_score = models.FloatField(null=True, help_text="Linking score for the best entity match")
     unambiguous_link = models.BooleanField(help_text="Was the linking unambigiuous?")
-    alt_entity = models.ForeignKey(Entity, null=True, related_name="mentions_alt", db_column="alt_entity", help_text="The 2nd best entity link for this mention")
+    alt_entity = models.TextField(help_text="The 2nd best entity link for this mention")
     alt_entity_score = models.FloatField(null=True, help_text="Linking score for the 2nd best entity match")
 
     gloss = models.TextField(null=True, help_text="Raw text representation of the mention")

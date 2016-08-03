@@ -10,6 +10,8 @@ def search(request, query=""):
     if len(query) == 0:
         return redirect("/")
 
+
+
     results = [
         {
             "id" : 0,
