@@ -1,8 +1,9 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.postgres.fields import ArrayField
-from django.contrib.postgres.search import SearchVectorField
-from . import settings
+from django.contrib.postgres.search import SearchVector, SearchVectorField
+from django.conf import settings
 
+from .util import CoreNLPService
 
 # TODO(chaganty): include a from_to stanza/dict methods.
 
@@ -11,9 +12,9 @@ class Document(models.Model):
     Represents metadata about a document.
     """
     class Meta:
-        if not settings.USE_TABLENAME_PREFIX:
+        if not settings.CORENLP_USE_TABLENAME_PREFIX:
             db_table = "document"
-        managed = settings.MANAGE_TABLES
+        managed = settings.CORENLP_MANAGE_TABLES
     id = models.TextField(primary_key=True)
     corpus_id = models.TextField(default='default', help_text="Namespace of the document collection.")
     source = models.TextField(default='default', help_text="Tracks the document source.")
@@ -28,15 +29,45 @@ class Document(models.Model):
     def __repr__(self):
         return "[Document {} ({})]".format(self.id, self.title)
 
+    def annotate(self, force=False, **kwargs):
+        """
+        Annotate these sentences.
+        :param force -- annotate sentences even if they exist. 
+        """
+        if Sentence.objects.filter(doc=self).exists() and not force:
+            return
+        with transaction.atomic():
+            if Sentence.objects.filter(doc=self).exists() and force:
+                # Delete existing sentence and mentions.
+                Sentence.objects.filter(doc=self).delete()
+                Mention.objects.filter(doc=self).delete()
+            annotated_document = CoreNLPService().annotate(self.gloss, **kwargs)
+            Sentence.objects.bulk_create([
+                Sentence(
+                    corpus_id=self.corpus_id,
+                    doc=self,
+                    sentence_index=s.sentence_index,
+                    words=s.words,
+                    lemmas=s.lemmas,
+                    pos_tags=s.pos_tags,
+                    ner_tags=s.ner_tags,
+                    doc_char_begin=[t.character_span[0] for t in s.tokens],
+                    doc_char_end=[t.character_span[1] for t in s.tokens],
+                    dependencies=s.depparse,
+                    gloss=s.clean_text
+                    ) for s in annotated_document.sentences]) # Use clean text instead of text.
+            # TODO(chaganty): Get mentions from sentence.
+            Mention.objects.bulk_create([])
+
 class Sentence(models.Model):
     """
     Represents the consitutents of each sentence, with the basic
     annotations.
     """
     class Meta:
-        if not settings.USE_TABLENAME_PREFIX:
+        if not settings.CORENLP_USE_TABLENAME_PREFIX:
             db_table = "document"
-        managed = settings.MANAGE_TABLES
+        managed = settings.CORENLP_MANAGE_TABLES
     # The corpus id is replicated here for the purpose of efficiency.
     corpus_id = models.TextField(help_text="Namespace of the document collection.")
     doc = models.ForeignKey(Document, help_text="Source document")
@@ -51,7 +82,7 @@ class Sentence(models.Model):
     dependencies = models.TextField(null=True, db_column = 'dependencies_extra', help_text="Dependency tree in CONLL format")
     # NOTE: other dependency formats like dependencies_malt are ignored.
     gloss = models.TextField(help_text="Raw text representation of the sentence")
-    searchable = SearchVectorField('words')
+    searchable = SearchVectorField('gloss')
 
     def __str__(self):
         return self.gloss
@@ -64,9 +95,9 @@ class Mention(models.Model):
     Represents occurrences of entity mentions in the document.
     """
     class Meta:
-        if not settings.USE_TABLENAME_PREFIX:
+        if not settings.CORENLP_USE_TABLENAME_PREFIX:
             db_table = "mention"
-        managed = settings.MANAGE_TABLES
+        managed = settings.CORENLP_MANAGE_TABLES
 
     id = models.BigIntegerField(primary_key = True)
     # The corpus id is replicated here for the purpose of efficiency.
@@ -107,9 +138,9 @@ class Relation(models.Model):
         'president' is the slot value
     """
     class Meta:
-        if not settings.USE_TABLENAME_PREFIX:
+        if not settings.CORENLP_USE_TABLENAME_PREFIX:
             db_table = "kbp_slot_fill"
-        managed = settings.MANAGE_TABLES
+        managed = settings.CORENLP_MANAGE_TABLES
 
     id = models.BigIntegerField(primary_key = True)
     # Provenance
