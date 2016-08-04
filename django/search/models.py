@@ -61,3 +61,16 @@ class QueryMap(models.Model):
                 # Create a new QueryMap
                 cls(query=query, document=doc).save()
         return cls.objects.filter(query=query)
+
+
+class Claim(models.Model):
+    """
+    A set of claims
+    """
+    timestamp = models.DateTimeField(help_text="Timestamp of this statement")
+    source = models.TextField(help_text="Source of the statement")
+    claim = models.TextField(help_text="Text of the claim")
+    judgement = models.TextField(help_text="Politifact judgement")
+    summary = models.TextField(help_text="Explanation")
+    url = models.TextField(help_text="Link to politifact page")
+

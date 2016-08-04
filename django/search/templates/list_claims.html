@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="panel panel-default">
+  <div class="panel-heading">
+    Claims.
+  </div>
+  <div class="panel-body">
+    <ul class="list-group">
+      {% for claim in claims %}
+      <li class="list-group-item">
+        <a target="_blank" href="/?query={{claim.claim}}">
+          <span class="glyphicon glyphicon-list-alt"></span>
+        </a>
+        <a target="_blank" href="{{claim.url}}">
+          <span class="glyphicon glyphicon-globe"></span>
+        </a>
+        {{claim.claim}}
+      </li>
+      {% endfor %}
+    </ul>
+
+    <section class="center-flex">
+      <nav>
+        <ul class="pagination">
+          {% if claims.has_previous %}
+          <li>
+            <a href="?page={{ claims.previous_page_number }}" aria-label="Previous">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+          {% endif %}
+          <li>{{ claims.number }}</li>
+          {% if claims.has_previous %}
+          <li>
+            <a href="?page={{ claims.next_page_number }}" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </section>
+    </div>
+</div>
+{% endblock %}
