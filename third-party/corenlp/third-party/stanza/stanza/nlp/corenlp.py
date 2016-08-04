@@ -180,7 +180,9 @@ class AnnotatedSentence(Sentence):
         # Fill in the text attribute if needed.
         if len(self.pb.text) == 0:
             self.pb.text = AnnotatedSentence._reconstruct_text_from_token_pbs(self.pb.token)
-            print(self.pb.text)
+        # Create a 'clean_text' field that presents a cleaner version
+        # of text. This can be useful (e.g.) when dealing with xml.
+        self._clean_text = AnnotatedSentence._reconstruct_clean_text_from_token_pbs(self.pb.token)
 
     def __getitem__(self, i):
         return self._tokens[i]
@@ -211,12 +213,20 @@ class AnnotatedSentence(Sentence):
     @staticmethod
     def _reconstruct_text_from_token_pbs(token_pbs):
         text = []
-        tok = None
         for i, tok in enumerate(token_pbs):
             if i != 0:
                 text.append(tok.before)
             text.append(tok.word)
         return ''.join(text)
+
+    @staticmethod
+    def _reconstruct_clean_text_from_token_pbs(token_pbs):
+        text = ""
+        for i, tok in enumerate(token_pbs):
+            if i != 0 and len(tok.before) > 0:
+                text += " "
+            text += tok.word
+        return text
 
     @property
     def paragraph(self):
@@ -269,6 +279,10 @@ class AnnotatedSentence(Sentence):
     @property
     def text(self):
         return self.pb.text
+
+    @property
+    def clean_text(self):
+        return self._clean_text
 
     def pos_tag(self, i):
         return self._tokens[i].pos
