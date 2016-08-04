@@ -135,3 +135,15 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
     ]
+
+CORENLP_USE_TABLENAME_PREFIX = True
+CORENLP_MANAGE_TABLES = True
+CORENLP_DEFAULT_ANNOTATORS = "tokenize,cleanxml,ssplit,lemma,pos,ner,depparse".split()
+CORENLP_ANNOTATOR_ENDPOINT = "http://localhost:9000"
+CORENLP_API_USER = ""
+CORENLP_API_KEY = ""
+
+# Google Search
+SEARCH_GOOGLE_CX = ""
+SEARCH_GOOGLE_KEY = ""
+
